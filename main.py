@@ -39,18 +39,21 @@ def validate(text: str) -> str:
         raise ValueError(f"entry is {len(text)} chars, must be 1-200")
     if not text:
         raise ValueError("entry must not be only whitespace")
-    if "\n" in text:
+    if "\n" in text or "\r" in text:
         raise ValueError("entry must be a single line")
+    if not text.endswith("."):
+        raise ValueError("entry must be a single sentence ending with '.'")
     return text
 
 
 def main() -> None:
     text = validate(ENTRY)
-    os.makedirs("/output", exist_ok=True)
-    tmp_path = "/output/.entry.txt.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
+    out_dir = os.environ.get("ENTRY_OUTPUT_DIR", "/output") or "/output"
+    os.makedirs(out_dir, exist_ok=True)
+    tmp_path = os.path.join(out_dir, ".entry.txt.tmp")
+    with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(text + "\n")
-    os.replace(tmp_path, "/output/entry.txt")
+    os.replace(tmp_path, os.path.join(out_dir, "entry.txt"))
 
 
 if __name__ == "__main__":
