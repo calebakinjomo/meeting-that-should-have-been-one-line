@@ -12,6 +12,13 @@ it is drawn straight from real office life (the decision-by-email
 thread, the client sign-off, the agenda), and it lands with a sting:
 the room full of people has nothing left to do but wonder why they are
 still sitting there. One sentence, one line, no context needed.
+
+Reviser pass: entry validation now raises ValueError instead of using
+``assert`` (asserts vanish under ``python -O``, so a bad entry could
+have slipped through silently), and the file is written atomically —
+to a temp file in the same directory, then renamed into place — so a
+reader never sees a half-written entry. The entry text itself is
+unchanged, byte for byte.
 """
 
 import os
@@ -22,14 +29,29 @@ ENTRY = (
     "sitting here."
 )
 
+
+def validate(text: str) -> str:
+    """Return the stripped entry, or raise ValueError if it breaks the gate."""
+    if not isinstance(text, str):
+        raise ValueError("entry must be a string")
+    text = text.strip()
+    if not 1 <= len(text) <= 200:
+        raise ValueError(f"entry is {len(text)} chars, must be 1-200")
+    if not text:
+        raise ValueError("entry must not be only whitespace")
+    if "\n" in text:
+        raise ValueError("entry must be a single line")
+    return text
+
+
 def main() -> None:
-    text = ENTRY.strip()
-    assert 1 <= len(text) <= 200, f"entry is {len(text)} chars, must be 1-200"
-    assert text.strip(), "entry must not be only whitespace"
-    assert text.count("\n") == 0, "entry must be a single line"
+    text = validate(ENTRY)
     os.makedirs("/output", exist_ok=True)
-    with open("/output/entry.txt", "w", encoding="utf-8") as f:
+    tmp_path = "/output/.entry.txt.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         f.write(text + "\n")
+    os.replace(tmp_path, "/output/entry.txt")
+
 
 if __name__ == "__main__":
     main()
